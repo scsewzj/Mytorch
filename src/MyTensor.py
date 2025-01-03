@@ -9,10 +9,14 @@ class mytensor():
 
     computegraph = computegraph()
 
-    def __init__(self, npar_data, grad=None, tensortype='tensor32', with_grad=False):
+    def __init__(self, npar_data, grad=None, tensortype='tensor32', with_grad=True):
         
         self.tensortype=tensortype
         self.with_grad=with_grad
+        self._cg_descend = []
+        self._cg_ascend = []
+        self._grad = None
+        self._grad_descend = []
         
         ### heritage implement later
         if type(npar_data)==np.array:
@@ -32,6 +36,15 @@ class mytensor():
             self.grad = None
 
         self.__get_shape()
+
+    @property
+    def _grad(self):
+        return self._grad_f
+    @_grad.setter
+    def _grad(self, val):
+        self._grad_f = val
+        if self.with_grad:
+            self.grad = self._grad_f
 
     ### call the class to initialize a tensor
     def __call__(self):
@@ -72,6 +85,12 @@ class mytensor():
             self.grad=np.zeros(self.npar_data.shape)
         else:
             self.grad=grad
+    
+    ### finally: hide _grad to client interface, use _grad in backend, and grad in frontend, cliend only allower to access grad
+    def reset_grad(self):
+        self._grad = None
+        if self.with_grad:
+            self.grad = np.zeros(self.npar_data.shape)
 
 
     def ones(self):
@@ -118,6 +137,15 @@ class mytensor():
     @computegraph.__record_tensor_oper__
     def __pow__(self, val):
         return mytensor(self.npar_data ** val, tensortype=self.tensortype)
+    
+    @computegraph.__record_tensor_oper__
+    def exp(self):
+        return mytensor(np.exp(self.npar_data), tensortype=self.tensortype)
+
+    @computegraph.__record_tensor_oper__
+    def log(self):
+        return mytensor(np.log(self.npar_data), tensortype=self.tensortype)
+    
 
 @mytensor.computegraph.__record_tensor_oper__
 def dot(tensor1: mytensor, tensor2: mytensor):
@@ -130,6 +158,8 @@ def add(tensor1: mytensor, tensor2: mytensor):
 @mytensor.computegraph.__record_tensor_oper__
 def hadamard(tensor1: mytensor, tensor2: mytensor):
     return mytensor(tensor1.npar_data*tensor2.npar_data, tensortype=tensor1.tensortype)
+
+
 
 def zeros(*args, tensortype='tensor32'):
     return mytensor(np.zeros(*args), tensortype=tensortype)

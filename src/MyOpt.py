@@ -6,42 +6,36 @@ import numpy as np
 
 class myopt:
 
-    def __init__(self, lr = 0.01, L = 'L2', type='grad_des'):
-        self.L = L
+    def __init__(self,parameter, type='BGD', lr = 0.01):
         self.lr = lr
         self.type = type
-        self.loss = None
         self.G = MyModel.mymodel.computegraph
-
-    def Loss(self, pred, label):
-        oh_labels = []
-        for i in label:
-            ohi=np.zeros(len(pred.npar_data[0]))
-            ohi[i]=1
-            oh_labels.append(ohi)
-        ohi = np.array(ohi)
-        if self.L == 'L2':
-            self.loss = np.linalg.norm(oh_labels - pred.npar_data)
-        elif self.L == 'L1':
-            self.loss = np.sum(np.abs(label - pred))
-        else:
-            raise ValueError('loss specified is not supported')
-
-    def backward(self):
-        self.G.__deletediscrete()
-        shapeout = self.G._edgelist[-1]['to'].npar_data.shape
-        L = np.array([self.loss for i in range(shapeout[0]*shapeout[1])]).reshape(shapeout)
-        Lw = L
-        Lb = L
-        for i in range(len(self.G._edgelist)):
-            Lw, Lb = self.G._edgelist[len(self.G._edgelist)-i-1]['forward'].backward(Lw, Lb)
-            ### adjusted loss
-
-    def zero_grad(self):
-        self.G.__deletediscrete__()
-        for i in self.G._nodelist:
-            i.reinit_grad
+        self.parameter = parameter
 
     def step(self):
-        for i in range(len(self.G._edgelist)):
-            self.G._edgelist[len(self.G._edgelist)-i-1]['forward'].update_parameter(self.lr)
+        pass
+
+    def zero_grad(self):
+        self.G.zero_grad()
+
+    def GSlim(self):
+        self.G.slim()
+
+class BGD(myopt):
+    def __init__(self, parameter, lr = 0.1):
+        super().__init__(parameter, lr = lr, type='BGD')
+
+    def step(self, lr=None):
+        if lr is not None:
+            self.lr = lr
+        for i in self.parameter:
+            i._myparameter__update(self.lr)
+
+
+class SGD(myopt):
+    def __init__(self, parameter, lr = 0.1):
+        super().__init__(parameter, lr = lr, type='SGD')
+
+    def step(self):
+        for i in self.G._parameternodes_index:
+            self.G._nodelist[i].__update(self.lr)
